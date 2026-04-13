@@ -247,6 +247,19 @@
           </div>
         </div>
 
+        <!-- Recent Trials -->
+        <div class="panel" style="background: #fdfdfd; border: 1px dashed #cedbd2;">
+          <div class="panel-title">📱 Recent Trial Activations</div>
+          <p style="font-size: 11px; color: #6f7a71; margin-bottom: 16px;">Last 50 users who clicked "Start 3-Day Free Trial"</p>
+          
+          <div class="history-list-container" id="trial-list">
+            <div style="font-size:13px;color:#6f7a71;text-align:center;padding:40px 16px;">
+              <div style="font-size:32px;margin-bottom:12px;">⌛</div>
+              <div>Loading trial logs...</div>
+            </div>
+          </div>
+        </div>
+
         <!-- History -->
         <div class="panel">
           <div class="panel-title">📋 Keys Issued</div>
@@ -295,6 +308,7 @@
           sessionStorage.setItem('td_admin', pw);
           refreshStats();
           loadHistory();
+          loadTrials();
         } else {
           document.getElementById('login-error').style.display = 'block';
           document.getElementById('admin-pw').classList.add('error');
@@ -312,6 +326,7 @@
         document.getElementById('dashboard-wrapper').style.display = 'block';
         refreshStats();
         loadHistory();
+        loadTrials();
       }
     };
 
@@ -496,6 +511,50 @@
       } else {
         document.getElementById('stat-last').textContent = '—';
         document.getElementById('stat-last-date').textContent = 'No keys yet';
+      }
+    }
+
+    async function loadTrials() {
+      const password = sessionStorage.getItem('td_admin');
+      const list = document.getElementById('trial-list');
+      
+      try {
+        const res = await fetch(`/api/trial-list?password=${encodeURIComponent(password)}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        
+        const data = await res.json();
+        const logs = data.logs || [];
+
+        if (logs.length === 0) {
+          list.innerHTML = `
+            <div style="font-size:13px;color:#6f7a71;text-align:center;padding:40px 16px;">
+              <div style="font-size:32px;margin-bottom:12px;">🌱</div>
+              <div>No trial starts recorded yet.</div>
+            </div>
+          `;
+          return;
+        }
+
+        list.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 11px;">
+            <tbody>
+              ${logs.map(log => `
+                <tr style="border-bottom: 1px solid #f1f5ee;">
+                  <td style="padding: 12px 4px;">
+                    <div style="font-weight: 800; color: #0a643b; font-size: 11px;">${log.storeName || 'New User'}</div>
+                    <div style="color: #6f7a71; font-family: monospace; font-size: 9px;">ID: ${log.deviceId}</div>
+                  </td>
+                  <td style="padding: 12px 4px; text-align: right;">
+                    <div style="font-size: 9px; color: #6f7a71;">${new Date(parseInt(log.date)).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                    <span style="font-size: 8px; color: #0a643b; font-weight: 700;">TRIAL STARTED</span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        list.innerHTML = `<div style="padding:20px; color:#ad1220; font-size:11px; text-align:center;">Failed to load live logs.</div>`;
       }
     }
 
