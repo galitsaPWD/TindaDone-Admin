@@ -65,9 +65,9 @@
       background: white; border-radius: 18px; padding: 20px;
       box-shadow: 0 2px 16px rgba(10,100,59,0.07);
     }
-    .stat-label { font-size: 11px; font-weight: 500; color: #6f7a71; letter-spacing: 1px; margin-bottom: 6px; }
-    .stat-value { font-size: 28px; font-weight: 700; color: #0a643b; }
-    .stat-sub { font-size: 12px; color: #6f7a71; margin-top: 4px; }
+    .stat-label { font-size: 11px; font-weight: 700; color: #6f7a71; letter-spacing: 1px; margin-bottom: 6px; }
+    .stat-value { font-size: 48px; font-weight: 800; color: #0a643b; margin-bottom: 4px; }
+    .stat-sub { font-size: 12px; color: #6f7a71; margin-top: 4px; font-weight: 500; }
 
     /* ── Panels grid ── */
     .panels-row {
@@ -81,6 +81,10 @@
     .panel {
       background: white; border-radius: 20px; padding: 24px;
       box-shadow: 0 2px 16px rgba(10,100,59,0.07);
+    }
+    .generator-panel {
+      background: #f1f7f3;
+      border: 1px solid #e1eee5;
     }
     .panel-title {
       font-size: 13px; font-weight: 700; color: #181d19; margin-bottom: 16px;
@@ -134,15 +138,10 @@
     .copy-btn.copied { background: #486551; }
 
     /* ── History ── */
-    .history-list { list-style: none; max-height: 340px; overflow-y: auto; }
-    .history-item {
-      padding: 10px 12px; background: #f1f5ee; border-radius: 10px;
-      margin-bottom: 6px; font-size: 12px;
-    }
-    .history-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-    .history-device { font-weight: 700; color: #181d19; font-family: monospace; font-size: 12px; }
-    .history-key { font-weight: 700; color: #0a643b; font-family: monospace; font-size: 12px; }
-    .history-date { color: #6f7a71; font-size: 10px; margin-top: 4px; }
+    .history-list-container { max-height: 400px; overflow-y: auto; }
+    .history-device { font-weight: 700; color: #181d19; font-family: monospace; font-size: 11px; margin-bottom: 2px;}
+    .history-key { font-weight: 800; color: #0a643b; font-family: monospace; font-size: 12px; }
+    .history-date { color: #6f7a71; font-size: 10px; margin-top: 6px; font-weight: 500;}
 
     .clear-btn {
       background: transparent; color: #ad1220; font-size: 12px; font-weight: 600;
@@ -191,7 +190,7 @@
           <div class="logo-box">TD</div>
           <div>
             <div class="logo-text">TindaDone Admin</div>
-            <div class="logo-sub">Dashboard</div>
+            <div class="logo-sub">Manage your clients</div>
           </div>
         </div>
         <button class="logout-btn" onclick="logout()" style="width:auto;padding:8px 16px;">Logout</button>
@@ -211,7 +210,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-label">LAST ISSUED</div>
-          <div class="stat-value" style="font-size:15px;padding-top:6px" id="stat-last">—</div>
+          <div class="stat-value" style="font-size:18px; line-height:48px;" id="stat-last">—</div>
           <div class="stat-sub" id="stat-last-date">No keys yet</div>
         </div>
       </div>
@@ -220,7 +219,7 @@
       <div class="panels-row">
 
         <!-- Key Generator -->
-        <div class="panel">
+        <div class="panel generator-panel">
           <div class="panel-title">🔑 Key Generator</div>
           
           <label for="customer-name">CUSTOMER / STORE NAME</label>
@@ -263,9 +262,12 @@
             <button onclick="exportToCSV()" style="width: auto; padding: 0 16px; font-size: 13px; background: #486551;">Export</button>
           </div>
 
-          <ul class="history-list" id="history-list">
-            <li style="font-size:12px;color:#6f7a71;text-align:center;padding:16px;">No keys generated yet</li>
-          </ul>
+          <div class="history-list-container" id="history-list">
+            <div style="font-size:13px;color:#6f7a71;text-align:center;padding:40px 16px;">
+              <div style="font-size:32px;margin-bottom:12px;">📭</div>
+              <div>No licenses generated yet.<br/>Create one from the panel on the left.</div>
+            </div>
+          </div>
           <hr class="divider" />
           <button class="clear-btn" onclick="clearHistory()">Clear All History</button>
         </div>
@@ -275,26 +277,37 @@
   </div>
 
   <script>
-    // ⚠️ KEEP THIS FILE PRIVATE — NEVER SHARE THIS CODE
-    const ADMIN_SECRET = 'tindadone_admin_2025_zyxw';
-    const ADMIN_PASSWORD = 'admin123'; // ← Change this!
-
-    function handleLogin() {
+    async function handleLogin() {
       const pw = document.getElementById('admin-pw').value;
-      if (pw === ADMIN_PASSWORD) {
-        document.getElementById('login-wrapper').style.display = 'none';
-        document.getElementById('dashboard-wrapper').style.display = 'block';
-        sessionStorage.setItem('td_admin', '1');
-        refreshStats();
-        loadHistory();
-      } else {
+      const btn = document.querySelector('#login-section button');
+      btn.textContent = 'Verifying...';
+      
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw })
+        });
+        
+        if (res.ok) {
+          document.getElementById('login-wrapper').style.display = 'none';
+          document.getElementById('dashboard-wrapper').style.display = 'block';
+          sessionStorage.setItem('td_admin', pw);
+          refreshStats();
+          loadHistory();
+        } else {
+          document.getElementById('login-error').style.display = 'block';
+          document.getElementById('admin-pw').classList.add('error');
+        }
+      } catch (e) {
+        document.getElementById('login-error').textContent = 'Server error. Try again.';
         document.getElementById('login-error').style.display = 'block';
-        document.getElementById('admin-pw').classList.add('error');
       }
+      btn.textContent = 'Login';
     }
 
     window.onload = () => {
-      if (sessionStorage.getItem('td_admin') === '1') {
+      if (sessionStorage.getItem('td_admin')) {
         document.getElementById('login-wrapper').style.display = 'none';
         document.getElementById('dashboard-wrapper').style.display = 'block';
         refreshStats();
@@ -308,15 +321,8 @@
       el.value = el.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     }
 
-    async function sha256(message) {
-      const buf = new TextEncoder().encode(message);
-      const hash = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
     async function generateKey() {
       let rawCode = document.getElementById('device-code').value.trim().toUpperCase();
-      // Clean it up if they forgot hyphens or added spaces
       let cleanVal = rawCode.replace(/[^A-Z0-9]/g, '');
       if (cleanVal.startsWith('TD')) cleanVal = cleanVal.slice(2);
       
@@ -325,32 +331,53 @@
       const errEl = document.getElementById('gen-error');
 
       if (!/^TD-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+        errEl.textContent = 'Invalid format. Must be TD-XXXX-XXXX.';
         errEl.style.display = 'block';
         return;
       }
       errEl.style.display = 'none';
       
-      // Update the input field so the user sees the "clean" version
       document.getElementById('device-code').value = code;
 
-      const hash = await sha256(code + ADMIN_SECRET);
-      const clean = hash.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const key = `${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8, 12)}`;
+      const password = sessionStorage.getItem('td_admin');
+      const btn = document.querySelector('.generator-panel button');
+      btn.textContent = 'Generating...';
 
-      document.getElementById('result-key').textContent = key;
-      document.getElementById('result-box').style.display = 'block';
-      document.getElementById('copy-btn').textContent = 'Copy Key';
-      document.getElementById('copy-btn').classList.remove('copied');
+      try {
+        const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceCode: code, password })
+        });
+        
+        if (!res.ok) {
+            errEl.textContent = 'Unauthorized. Session expired or bad password.';
+            errEl.style.display = 'block';
+            if (res.status === 401) logout();
+            btn.textContent = 'Generate Activation Key';
+            return;
+        }
 
-      const history = JSON.parse(localStorage.getItem('td_key_history') || '[]');
-      history.unshift({ name, code, key, date: new Date().toLocaleString('en-PH'), ts: Date.now() });
-      localStorage.setItem('td_key_history', JSON.stringify(history.slice(0, 100))); // Store more history
-      
-      // Clear name for next entry
-      document.getElementById('customer-name').value = '';
-      
-      loadHistory();
-      refreshStats();
+        const data = await res.json();
+        const key = data.key;
+
+        document.getElementById('result-key').textContent = key;
+        document.getElementById('result-box').style.display = 'block';
+        document.getElementById('copy-btn').textContent = 'Copy Key';
+        document.getElementById('copy-btn').classList.remove('copied');
+
+        const history = JSON.parse(localStorage.getItem('td_key_history') || '[]');
+        history.unshift({ name, code, key, date: new Date().toLocaleString('en-PH'), ts: Date.now() });
+        localStorage.setItem('td_key_history', JSON.stringify(history.slice(0, 100)));
+        
+        document.getElementById('customer-name').value = '';
+        loadHistory();
+        refreshStats();
+      } catch (e) {
+          errEl.textContent = 'Server error connecting to Vercel Backend.';
+          errEl.style.display = 'block';
+      }
+      btn.textContent = 'Generate Activation Key';
     }
 
     function copyKey() {
@@ -383,26 +410,47 @@
       );
 
       if (filtered.length === 0) {
-        list.innerHTML = `<li style="font-size:12px;color:#6f7a71;text-align:center;padding:16px;">${searchTerm ? 'No results found' : 'No keys generated yet'}</li>`;
+        list.innerHTML = `
+          <div style="font-size:13px;color:#6f7a71;text-align:center;padding:40px 16px;">
+            <div style="font-size:32px;margin-bottom:12px;">📭</div>
+            <div>${searchTerm ? 'No matching keys found.' : 'No licenses generated yet.<br/>Create one from the panel on the left.'}</div>
+          </div>
+        `;
         return;
       }
 
-      list.innerHTML = filtered.map(h => `
-        <li class="history-item">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1;">
-              <div style="font-size: 13px; font-weight: 800; color: #0a643b; margin-bottom: 4px;">${h.name || 'Unknown'}</div>
-              <div class="history-row">
-                <span class="history-device">${h.code}</span>
-                <span style="color:#6f7a71">→</span>
-                <span class="history-key">${h.key}</span>
-              </div>
-              <div class="history-date">${h.date}</div>
-            </div>
-            <button onclick="deleteEntry(${h.ts})" style="width: auto; padding: 4px 8px; background: transparent; color: #ad1220; font-size: 10px; border: 1px solid #ffdad6; margin-left: 8px;">✕</button>
-          </div>
-        </li>
-      `).join('');
+      list.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 11px;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e0e4dd; color: #6f7a71; text-transform: uppercase;">
+              <th style="padding: 10px 4px; font-weight:600;">Store Name</th>
+              <th style="padding: 10px 4px; font-weight:600;">Device & Key</th>
+              <th style="padding: 10px 4px; font-weight:600;">Status</th>
+              <th style="padding: 10px 4px; text-align: right; font-weight:600;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(h => `
+              <tr style="border-bottom: 1px solid #f1f5ee;">
+                <td style="padding: 14px 4px; font-weight: 800; color: #0a643b; font-size: 12px; vertical-align: top;">
+                  ${h.name || 'Unknown'}
+                  <div class="history-date">${h.date.split(',')[0]}</div>
+                </td>
+                <td style="padding: 14px 4px; vertical-align: top;">
+                  <div class="history-device">${h.code}</div>
+                  <div class="history-key">${h.key}</div>
+                </td>
+                <td style="padding: 14px 4px; vertical-align: top;">
+                  <span style="font-weight:800; padding:4px 8px; border-radius:12px; background:#ceffdb; color:#0a643b; font-size:9px; text-transform:uppercase;">Active</span>
+                </td>
+                <td style="padding: 14px 4px; text-align: right; vertical-align: top;">
+                  <button onclick="deleteEntry(${h.ts})" style="width: auto; padding: 6px 12px; background: #fff0f0; color: #ad1220; font-size: 11px; font-weight:700; border: none; border-radius:8px;">Revoke</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
     function exportToCSV() {
