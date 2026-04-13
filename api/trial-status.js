@@ -14,8 +14,9 @@ export default async function handler(req, res) {
   }
 
   const { deviceId } = req.query;
-  const KV_URL = process.env.KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+  // Support both standard and prefixed Vercel KV variables
+  const KV_URL = process.env.KV_REST_API_URL || process.env.STORAGE_KV_REST_API_URL;
+  const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.STORAGE_KV_REST_API_TOKEN;
 
   if (!KV_URL || !KV_TOKEN) {
     return res.status(500).json({ message: 'KV Database not configured' });
