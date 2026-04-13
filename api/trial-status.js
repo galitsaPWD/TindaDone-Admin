@@ -14,9 +14,16 @@ export default async function handler(req, res) {
   }
 
   const { deviceId } = req.query;
-  // Support both standard and prefixed Vercel KV variables
-  const KV_URL = process.env.KV_REST_API_URL || process.env.STORAGE_KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.STORAGE_KV_REST_API_TOKEN;
+  
+  // AUTO-DETECT: Find any environment variable that looks like a Vercel KV setup
+  const findKVVar = (suffix) => {
+    if (process.env[suffix]) return process.env[suffix];
+    const key = Object.keys(process.env).find(k => k.endsWith(suffix));
+    return key ? process.env[key] : null;
+  };
+
+  const KV_URL = findKVVar('KV_REST_API_URL');
+  const KV_TOKEN = findKVVar('KV_REST_API_TOKEN');
 
   if (!KV_URL || !KV_TOKEN) {
     return res.status(500).json({ message: 'KV Database not configured' });
